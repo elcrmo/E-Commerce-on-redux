@@ -5,26 +5,14 @@ import bodyParser from 'body-parser'
 import sockjs from 'sockjs'
 import { renderToStaticNodeStream } from 'react-dom/server'
 import React from 'react'
-
+import axios from 'axios'
 import cookieParser from 'cookie-parser'
 import config from './config'
 import Html from '../client/html'
 
+const { readFile } = require('fs').promises
+
 const Root = () => ''
-
-try {
-  // eslint-disable-next-line import/no-unresolved
-  // ;(async () => {
-  //   const items = await import('../dist/assets/js/root.bundle')
-  //   console.log(JSON.stringify(items))
-
-  //   Root = (props) => <items.Root {...props} />
-  //   console.log(JSON.stringify(items.Root))
-  // })()
-  console.log(Root)
-} catch (ex) {
-  console.log(' run yarn build:prod to enable ssr')
-}
 
 let connections = []
 
@@ -40,6 +28,18 @@ const middleware = [
 ]
 
 middleware.forEach((it) => server.use(it))
+
+server.get('/api/v1/rates', (req, res) => {
+  axios
+    .get('https://api.exchangeratesapi.io/latest?base=USD&symbols=EUR,CAD,RUB,USD')
+    .then(({ data }) => res.json(data.rates))
+})
+
+server.get('/api/v1/data', (req, res) => {
+  readFile(`${__dirname}/data/data.json`, { encoding: 'utf8' }).then((data) =>
+    res.json(JSON.parse(data))
+  )
+})
 
 server.use('/api/', (req, res) => {
   res.status(404)
@@ -62,16 +62,13 @@ server.get('/', (req, res) => {
 })
 
 server.get('/*', (req, res) => {
-  const initialState = {
-    location: req.url
-  }
-
-  return res.send(
-    Html({
-      body: '',
-      initialState
-    })
-  )
+  const appStream = renderToStaticNodeStream(<Root location={req.url} context={{}} />)
+  res.write(htmlStart)
+  appStream.pipe(res, { end: false })
+  appStream.on('end', () => {
+    res.write(htmlEnd)
+    res.end()
+  })
 })
 
 const app = server.listen(port)
