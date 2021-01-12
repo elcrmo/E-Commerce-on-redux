@@ -6,7 +6,7 @@ import Card from './card'
 
 import { getGoods, getCurrency } from '../redux/reducers/goods'
 
-const Dummy = () => {
+const Main = () => {
   const dispatch = useDispatch()
   const listOfGoods = useSelector((s) => s.goods.list)
   const currentRate = useSelector((s) => s.goods.currentRate)
@@ -45,6 +45,6 @@ const Dummy = () => {
   )
 }
 
-Dummy.propTypes = {}
+Main.propTypes = {}
 
-export default React.memo(Dummy)
+export default React.memo(Main)

@@ -2,7 +2,8 @@ import axios from 'axios'
 
 const GET_GOODS = 'GET_GOODS'
 const GET_CURRENCY = 'GET_CURRENCY'
-const SET_CURRENT_RATE = 'SET_CURRENT_RATE'
+export const SET_CURRENT_RATE = 'SET_CURRENT_RATE'
+export const GET_SORTED_GOODS = 'GET_SORTED_GOODS'
 
 const initialState = {
   list: [],
@@ -11,13 +12,21 @@ const initialState = {
   currency: 'USD'
 }
 
+const getImage = (products) => {
+  return products.map((it) => ({
+    ...it,
+    image: `https://source.unsplash.com/800x600/?${/\w+(?=\s)/gi.exec(it.title)}`
+  }))
+}
+
 export default (state = initialState, action) => {
   switch (action.type) {
-    case GET_GOODS: {
+    case GET_GOODS:
+    case GET_SORTED_GOODS: {
       const { list } = action
       return {
         ...state,
-        list
+        list: getImage(list)
       }
     }
     case GET_CURRENCY: {
@@ -42,23 +51,27 @@ export default (state = initialState, action) => {
 
 export function getGoods() {
   return (dispatch) => {
-    axios('/api/v1/data').then(({ data: list }) => dispatch({ type: GET_GOODS, list }))
+    axios('/api/v1/data')
+      .then(({ data: list }) => dispatch({ type: GET_GOODS, list }))
+      .catch(() => dispatch({ type: GET_GOODS, list: [] }))
   }
 }
 
 export function getCurrency() {
   return (dispatch) => {
-    axios('/api/v1/rates').then(({ data: rates }) => dispatch({ type: GET_CURRENCY, rates }))
+    axios('/api/v1/rates')
+      .then(({ data: rates }) => dispatch({ type: GET_CURRENCY, rates }))
+      .catch(() => dispatch({ type: GET_CURRENCY, rates: {} }))
   }
 }
 
 export function setCurrentRate(currencyType) {
   return (dispatch, getState) => {
     const store = getState()
-    const { rates } = store.goods
+    const { rates, currency } = store.goods
     dispatch({
       type: SET_CURRENT_RATE,
-      current: { currency: rates[currencyType], symbol: currencyType }
+      current: { currency: rates[currencyType], symbol: currencyType, previousCurrency: currency }
     })
   }
 }
@@ -74,8 +87,9 @@ export function sort(str) {
         typeOfSort.order
     )
     dispatch({
-      type: GET_GOODS,
-      list: sortedList
+      type: GET_SORTED_GOODS,
+      list: sortedList,
+      sortType: typeOfSort.type
     })
   }
 }
